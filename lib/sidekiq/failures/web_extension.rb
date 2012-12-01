@@ -4,11 +4,16 @@ module Sidekiq
 
       def self.registered(app)
         app.helpers do
-          def find_template(view, *a, &b)
-            dir = File.expand_path("../views/", __FILE__)
-            super(dir, *a, &b)
-            super
+          def find_template_with_failures(name, *a, &b)
+            if !settings.views.is_a?(Array)
+              settings.views = Array(settings.views).flatten
+            end
+            if !settings.views.include?(File.expand_path("../views/", __FILE__))
+              settings.views << File.expand_path("../views/", __FILE__)
+            end
+            settings.views.each { |v| find_template_without_failures(name, *a, &b) }
           end
+          alias_method_chain :find_template, :failures
         end
 
         app.get "/failures" do
